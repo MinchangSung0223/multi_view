@@ -1,0 +1,20 @@
+
+Result folder: DyCalibResult/049222072128/DC4
+Serial number: 049222072128
+Device name: Intel RealSense D435
+Device PID: 0B07
+FW version: 05.12.14.50
+Calibration Type: Targeted
+Laser Power: Off
+RGB: Yes
+Wide Angle Lens: Yes
+Auto Exposure: On
+IR setpoint: 1000, (min: 0, max: 4095, default: 1000)
+RGB brightness: 0, (min: -64, max: 64, default: 0)
+AE SetPoint: Auto
+Streamming Resolution: 1280x720 at 30(fps)
+initialize dynamic calibration parameters ...
+Start Initialize device ...
+Start rectification ...
+Calibration has been cancelled.
+
