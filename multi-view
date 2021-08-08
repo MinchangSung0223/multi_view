@@ -81,12 +81,12 @@ screenE ()
 
 updateScreenA ()
 {
-    screenA "roslaunch realsense2_camera rs_rgbd.launch camera:=cam_0 serial_no:=${ARR[0]} filters:=pointcloud,spatial,temporal initial_reset:=true" # color_width:=1920 color_height:=1080 color_fps:=30 depth_width:=1280 depth_height:=720 depth_fps:=15"
+    screenA "roslaunch realsense2_camera rs_rgbd.launch camera:=cam_0 serial_no:=${ARR[0]} filters:=pointcloud,spatial,temporal" #initial_reset:=true" # color_width:=1920 color_height:=1080 color_fps:=30 depth_width:=1280 depth_height:=720 depth_fps:=15"
 }
 
 updateScreenB ()
 {
-    screenB "roslaunch realsense2_camera rs_rgbd.launch camera:=cam_1 serial_no:=${ARR[2]} filters:=pointcloud,spatial,temporal initial_reset:=true" # color_width:=1920 color_height:=1080 color_fps:=30 depth_width:=1280 depth_height:=720 depth_fps:=15"
+    screenB "roslaunch realsense2_camera rs_rgbd.launch camera:=cam_1 serial_no:=${ARR[2]} filters:=pointcloud,spatial,temporal" #initial_reset:=true" # color_width:=1920 color_height:=1080 color_fps:=30 depth_width:=1280 depth_height:=720 depth_fps:=15"
 }
 
 updateScreenC ()

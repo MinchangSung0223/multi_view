@@ -85,6 +85,8 @@ class PointSetRegistration:
     def transform_points(self, T):
         source_temp = copy.deepcopy(self.source)
         target_temp = copy.deepcopy(self.target)
+        #source_temp.paint_uniform_color([1, 0.706, 0])
+        #target_temp.paint_uniform_color([0, 0.651, 0.929])
         target_temp.transform(T)
         o3d.visualization.draw_geometries([source_temp, target_temp])
 
@@ -121,6 +123,9 @@ if __name__ == '__main__':
 
     print('between two matrix')
     print(T_btw_cameras.dot(np.linalg.inv(T_btw_cameras_)))
+
+
+
 
 #voxel_size = 0.005  # means 5mm for this dataset
 #source, target, source_down, target_down, source_fpfh, target_fpfh = prepare_dataset(voxel_size)

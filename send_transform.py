@@ -103,7 +103,8 @@ def callback_cam(pc2_msg):
     T_rgb_to_ir_side[:3, :3] = np.reshape(rgb_to_ir_sidecam[:-3], (3, 3))
     T_rgb_to_ir_side[:3, 3] = rgb_to_ir_sidecam[-3:]
     
-    T_btw_cameras = T_ir_to_rgb_base.dot(T_btw_cameras_).dot(T_rgb_to_ir_side)
+    #T_btw_cameras = T_ir_to_rgb_base.dot(T_btw_cameras_).dot(T_rgb_to_ir_side)
+    T_btw_cameras = T_btw_cameras_
 
     # Transform the point cloud data from cam 2 coordinate to cam 1 coordinate
     o3dpc.transform(T_btw_cameras) # Open3D
