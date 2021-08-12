@@ -20,10 +20,10 @@ def setArgs():
     parser.add_argument('-s', '--stream', action='store_true')
     parser.add_argument('-c', '--calibrate', action='store_true')
     parser.add_argument('-sc', '--stereo', action='store_true')
-    parser.add_argument('-bw', '--board_width', type=int, default=9)
+    parser.add_argument('-bw', '--board_width', type=int, default=8)
     parser.add_argument('-bh', '--board_height', type=int, default=6)
-    parser.add_argument('-bs', '--board_size', type=float, default=0.0235)
-    parser.add_argument('-fh', '--frame_height', type=int, default=480)
+    parser.add_argument('-bs', '--board_size', type=float, default=0.027)
+    parser.add_argument('-fh', '--frame_height', type=int, default=1080)
     parser.add_argument('-n', '--total_count', type=int, default=13)
     parser.add_argument('-d', '--selected_devices', nargs='*', help='Set of the devices you want to use')
     parser.add_argument('-r', '--refine', action='store_true')
@@ -53,7 +53,7 @@ class StereoCalibration:
             self.frame_width = 1920
             self.frame_height = 1080
             self.depth_frame_width = 1280
-            self.depth_frame_height = 720
+            self.depth_frame_height = 800
         
         else:
             print("Use the correct size of the frame height(480 or 1080)")
@@ -81,8 +81,8 @@ class StereoCalibration:
         
         # for stereo-calibrate
         self.stereocalib_criteria = (cv2.TERM_CRITERIA_MAX_ITER + cv2.TERM_CRITERIA_EPS, 100, 1e-5)
-        self.mtx = [[[]]]           # Camera matrix
-        self.dist = [[[]]]          # Distortion
+        self.mtx = []           # Camera matrix
+        self.dist = []          # Distortion
         self.corners2 = []
 
         self.align_to_color = []
@@ -91,8 +91,8 @@ class StereoCalibration:
             for i in ctx.devices:
                 self.pipeline.append(rs.pipeline())
                 for j in range(3):
-                    self.mtx.append([[[]]])
-                    self.dist.append([[[]]])
+                    self.mtx.append([])
+                    self.dist.append([])
                     self.corners2.append([])
 
             for idx_d in self.selected_devices:
@@ -104,7 +104,8 @@ class StereoCalibration:
                 config.enable_stream(rs.stream.infrared, 1, self.depth_frame_width, self.depth_frame_height, rs.format.y8, 30)
                 config.enable_stream(rs.stream.infrared, 2, self.depth_frame_width, self.depth_frame_height, rs.format.y8, 30)
 
-                print('Frame size: ', self.frame_width, 'x', self.frame_height)
+                print('Frame size(RGB): ', self.frame_width, 'x', self.frame_height)
+                print('Frame size(Depth): ', self.depth_frame_width, 'x', self.depth_frame_height)
                 profile = self.pipeline[idx_d].start(config)
 
                 device = profile.get_device()
@@ -114,19 +115,19 @@ class StereoCalibration:
                 print("laser power = ", laser_pwr)
                 laser_range = depth_sensor.get_option_range(rs.option.laser_power)
                 print("laser power range = " , laser_range.min , "~", laser_range.max)
+                print('Board size: ', self.board_size)
 
             self.total_pipe = len(self.pipeline)
-            self.fiducial_pts = np.zeros((self.total_pipe, 4, 3)) # (num of camera, num of points, position)
+
             # for stereo-calibrate
-            self.imgpoints2 = np.zeros((self.total_pipe, self.total_count, self.board_height * self.board_width, 1, 2), dtype=np.float32)
+            self.n_ir = 2
+            self.imgpoints2 = np.zeros((self.total_pipe, self.n_ir, self.total_count, self.board_height * self.board_width, 1, 2), dtype=np.float32)
         else:
             print('No Intel Device connected...', len(ctx.devices))
             sys.exit(0)
 
     def stream(self):
-
-        ir_image = np.zeros((2, self.depth_frame_height, self.depth_frame_width), dtype=np.uint8)
-
+        ir_image = np.zeros((self.n_ir, self.depth_frame_height, self.depth_frame_width), dtype=np.uint8)
         while True:
             for i in self.selected_devices:
                 pipeline = self.pipeline[i]
@@ -142,6 +143,9 @@ class StereoCalibration:
                 ir_color_0 = cv2.cvtColor(ir_image[0], cv2.COLOR_GRAY2BGR)
                 ir_color_1 = cv2.cvtColor(ir_image[1], cv2.COLOR_GRAY2BGR)
 
+                ir_color_0 = cv2.resize(ir_color_0, (self.re_frame_width, self.re_frame_height))
+                ir_color_1 = cv2.resize(ir_color_1, (self.re_frame_width, self.re_frame_height))
+                rgb_image = cv2.resize(rgb_image, (self.re_frame_width, self.re_frame_height))
                 # Stack both images horizontally
                 images = np.hstack((ir_color_0, ir_color_1, rgb_image))
 
@@ -170,7 +174,7 @@ class StereoCalibration:
 
             for j in range(3): # ir1, ir2, rgb
                 n_img = 0
-                print(j, 'th camera calibration(0: ir_1, 1: ir_2, 2: rgb)')
+                print(j, 'th camera calibration(0: ir_0, 1: ir_1, 2: rgb)')
                     
                 while n_img < self.total_count:
 
@@ -196,9 +200,10 @@ class StereoCalibration:
                             sys.exit(0)
 
                 cv2.destroyAllWindows()
-
-                ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(self.objpoints, self.imgpoints, (self.frame_width, self.frame_height), None, None)
-
+                if j == 2:
+                    ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(self.objpoints, self.imgpoints, (self.frame_width, self.frame_height), None, None)
+                else:
+                    ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(self.objpoints, self.imgpoints, (self.depth_frame_width, self.depth_frame_height), None, None)
                 # Re-projection error
                 mean_error = 0
                 for i in range(len(self.objpoints)):
@@ -219,6 +224,8 @@ class StereoCalibration:
         pipe.stop()
 
     def estimatePose(self, cam_calibration_file):
+        # Estimate the chessboard using only one camera
+        # If you connect many cameras, the first camera will be selected.
         length_of_axis = 0.1 
 
         # Load previously saved data
@@ -279,9 +286,13 @@ class StereoCalibration:
         cv2.destroyAllWindows()
 
     def internal_calibrate(self, folder_name):
-        # Calibration between rgb and ir in a d435 sensor
+        # Calibration between rgb and ir0, ir0 and ir1 in a d435 sensor
 
         # Load previously saved data
+        # i: the number of d435 
+        # j: the number of internal camera(ir0, ir1, rgb) = 3 (constant)
+        # mtx: camera matrix, 
+        # dist: distortion
         for i in self.selected_devices:
             for j in range(3):
                 filename = 'config/cam_calib_'+str(i)+str(j)+'.xml'
@@ -290,7 +301,6 @@ class StereoCalibration:
                 if not s.isOpened():
                     print('Failed to open,', filename)
                     exit(1)
-
                 self.mtx[i+j] = s.getNode('mtx').mat()
                 self.dist[i+j] = s.getNode('dist').mat()
 
@@ -304,76 +314,67 @@ class StereoCalibration:
             pipe = self.pipeline[idx_pipe]
             n_img = 0
 
+            # IR-IR, not RGB
             while n_img < self.total_count:
+                gray_img = np.zeros((self.n_ir, self.depth_frame_height, self.depth_frame_width), dtype=np.uint8) 
+                total_gray_img = np.zeros((self.depth_frame_height, 1), dtype=np.uint8)
                 found_board = True
-                gray_images = np.zeros((self.depth_frame_height, 1), dtype=np.uint8)
+                frame = pipe.wait_for_frames()
 
-                for j in range(2): # ir1, ir2
-                    frame = pipe.wait_for_frames()
-                    gray_img = np.asanyarray(frame[j].get_data())
-                    if j == 2:
-                        gray_img = cv2.cvtColor(gray_img, cv2.COLOR_BGR2GRAY)
-                    found_board_, corners = cv2.findChessboardCorners(gray_img, (self.board_width, self.board_height), None)
+                for j in range(self.n_ir): # ir0, ir1
+                    gray_img_ = np.asanyarray(frame[j].get_data())
+                    found_board_, corners = cv2.findChessboardCorners(gray_img_, (self.board_width, self.board_height), None)
                     found_board = found_board * found_board_
 
                     if found_board_: 
-                        corners2 = cv2.cornerSubPix(gray_img, corners, (11, 11), (-1, -1), self.criteria)
-                        cv2.drawChessboardCorners(gray_img, (self.board_width, self.board_height), corners2, found_board)
-                        self.imgpoints.append(corners2)
-                        self.objpoints.append(self.objp)
+                        corners2_ = cv2.cornerSubPix(gray_img_, corners, (11, 11), (-1, -1), self.criteria)
+                        cv2.drawChessboardCorners(gray_img_, (self.board_width, self.board_height), corners2_, found_board)
+                        self.corners2[j] = corners2_
+                        gray_img[j, :, :] = gray_img_
 
-                    #gray_images = np.hstack((gray_images, gray_img))
-
-                if found_board:
-                    n_img += 1
-
+                if found_board: # When both ir cameras detect the chessboard
                     for i in self.selected_devices:
-                        
-                        for j in range(2):
-
-                            #gray_images = cv2.resize(gray_images[:, 1:], (self.re_frame_width, self.re_frame_height))
-                            print(n_img + 1, '/', self.total_count)
-                            #cv2.imshow('cam' + str(j), gray_images)
-                            self.imgpoints2[i, n_img] = self.corners2[i]
-
-                #key = cv2.waitKey(self.wait_time)
-                if key == 27:
-                    #cv2.destroyAllWindows()
-                    pipe.stop()
-                    sys.exit(0)
-
-            #cv2.destroyAllWindows()
-            pipe.stop()
+                        for j in range(self.n_ir):
+                            total_gray_img = np.hstack((total_gray_img, gray_img[j]))
+                            self.imgpoints2[i, j, n_img] = self.corners2[j]
+                    
+                    self.objpoints.append(self.objp)
+                    print(n_img + 1, '/', self.total_count)
+                    cv2.putText(total_gray_img, str(n_img+1) + '/' + str(self.total_count), (50, 100), cv2.FONT_HERSHEY_SIMPLEX, 3, (255, 0, 0), 2, cv2.LINE_AA)
+                    total_gray_img = cv2.resize(total_gray_img, (self.re_frame_width * self.n_ir, self.re_frame_height))
+                    cv2.imshow('stereo-calibrate', total_gray_img)
+                    key = cv2.waitKey(self.wait_time)
+                    n_img += 1
+                    if key == 27:
+                        cv2.destroyAllWindows()
+                        pipe.stop()
+                        sys.exit(0)
 
             flags = cv2.CALIB_FIX_INTRINSIC
 
-            # ir1 - ir2 / ir1 - rgb
-            for i in range(2):
-                imgpoints_l = self.imgpoints2[self.selected_devices[0]]
-                imgpoints_r = self.imgpoints2[self.selected_devices[1]]
-                _, _, _, _, _, R, tvec, _, _ = cv2.stereoCalibrate(self.objpoints, imgpoints_l, imgpoints_r, self.mtx[self.selected_devices[0]], self.dist[self.selected_devices[0]], self.mtx[self.selected_devices[1]], self.dist[self.selected_devices[1]], (self.frame_width, self.frame_height), criteria=self.stereocalib_criteria, flags=flags)
+        imgpoints_l = self.imgpoints2[self.selected_devices[0], 0]
+        imgpoints_r = self.imgpoints2[self.selected_devices[0], 1]
+        _, _, _, _, _, R, tvec, _, _ = cv2.stereoCalibrate(self.objpoints, imgpoints_l, imgpoints_r, self.mtx[0], self.dist[0], self.mtx[1], self.dist[1], (self.depth_frame_width, self.depth_frame_height), criteria=self.stereocalib_criteria, flags=flags)
 
-                # R, tvec: Transformation from Cam 2 to Cam 1
-                tvec = -R.T.dot(tvec)
-                rotation_matrix = R.T
-                eulerAngle = self.rotationMatrixToEulerAngles(rotation_matrix) 
+        # R, tvec: Transformation from Cam 2 to Cam 1
+        #tvec = -R.T.dot(tvec)
+        #rotation_matrix = R.T
+        #eulerAngle = self.rotationMatrixToEulerAngles(rotation_matrix) 
+        eulerAngle = self.rotationMatrixToEulerAngles(R) 
 
-                print('-----------------------------------------')
-                print('Combination:', self.selected_devices[0], self.selected_devices[1])
-                print('Translation vector(X, Y, Z) [meter]', tvec.T)
-                print('Rotation matrix', rotation_matrix)
-                print('Euler angle(Rx, Ry, Rz) [deg]', eulerAngle * 180 / math.pi)
+        print('-----------------------------------------')
+        print('Combination:', 'ir0', 'ir1')
+        print('Translation vector(X, Y, Z) [meter]', tvec.T)
+        print('Rotation matrix', R)
+        print('Euler angle(Rx, Ry, Rz) [deg]', eulerAngle * 180 / math.pi)
 
-                # Save camera parameters
-                s = cv2.FileStorage('config/internal_'+str(idx_pipe)+str(i)+'.xml', cv2.FileStorage_WRITE)
-                s.write('R', rotation_matrix)
-                s.write('tvec', tvec)
-                s.release()
-
-        return rotation_matrix, tvec
-
-
-
+        # Save camera parameters
+        s = cv2.FileStorage('config/trans'+str(self.selected_devices[0])+'_ir.xml', cv2.FileStorage_WRITE)
+        s.write('R', R)
+        s.write('tvec', tvec)
+        s.write('test', 10)
+        s.release()
+        return R, tvec
 
     def external_calibrate(self, folder_name):
         # Calibration between multiple d435 sensors

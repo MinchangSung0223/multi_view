@@ -319,6 +319,7 @@ class StereoCalibration:
 
                     total_gray_img = np.hstack((total_gray_img, gray_img[i]))
                     self.imgpoints2[i, n_img] = self.corners2[i]
+                    pu.db
 
                 self.objpoints.append(self.objp)
                 print(n_img + 1, '/', self.total_count)
