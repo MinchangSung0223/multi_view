@@ -1,0 +1,91 @@
+<?xml version="1.0"?>
+<Config>
+    <param name = "ResolutionLeftRight">
+        <value>1280</value>
+        <value>800</value>
+    </param>
+    <param name = "FocalLengthLeft">
+        <value>635.545</value>
+        <value>633.868</value>
+    </param>
+    <param name = "PrincipalPointLeft">
+        <value>634.635</value>
+        <value>395.307</value>
+    </param>
+    <param name = "DistortionLeft">
+        <value>-0.05646</value>
+        <value>0.0648003</value>
+        <value>-0.000793818</value>
+        <value>-0.000929983</value>
+        <value>-0.0205694</value>
+    </param>
+    <param name = "FocalLengthRight">
+        <value>635.164</value>
+        <value>633.719</value>
+    </param>
+    <param name = "PrincipalPointRight">
+        <value>637.467</value>
+        <value>399.165</value>
+    </param>
+    <param name = "DistortionRight">
+        <value>-0.0571946</value>
+        <value>0.0656737</value>
+        <value>2.23688e-05</value>
+        <value>-0.000740154</value>
+        <value>-0.02038</value>
+    </param>
+    <param name = "RotationLeftRight">
+        <value>0.999996</value>
+        <value>-0.00223972</value>
+        <value>-0.00178034</value>
+        <value>0.00222813</value>
+        <value>0.999976</value>
+        <value>-0.00648965</value>
+        <value>0.00179483</value>
+        <value>0.00648566</value>
+        <value>0.999977</value>
+    </param>
+    <param name = "TranslationLeftRight">
+        <value>-48.945</value>
+        <value>-0.0707042</value>
+        <value>0.083643</value>
+    </param>
+    <param name = "HasRGB">
+        <value>1</value>
+    </param>
+    <param name = "ResolutionRGB">
+        <value>1920</value>
+        <value>1080</value>
+    </param>
+    <param name = "FocalLengthRGB">
+        <value>1356.63</value>
+        <value>1354.62</value>
+    </param>
+    <param name = "PrincipalPointRGB">
+        <value>968.663</value>
+        <value>525.3</value>
+    </param>
+    <param name = "DistortionRGB">
+        <value>0</value>
+        <value>0</value>
+        <value>0</value>
+        <value>0</value>
+        <value>0</value>
+    </param>
+    <param name = "RotationLeftRGB">
+        <value>0.999993</value>
+        <value>-6.47374e-05</value>
+        <value>0.00372384</value>
+        <value>6.07332e-05</value>
+        <value>0.999999</value>
+        <value>0.00107539</value>
+        <value>-0.0037239</value>
+        <value>-0.00107516</value>
+        <value>0.999992</value>
+    </param>
+    <param name = "TranslationLeftRGB">
+        <value>14.9518</value>
+        <value>0.0858504</value>
+        <value>-0.170435</value>
+    </param>
+</Config>

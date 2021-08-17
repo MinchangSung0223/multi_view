@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<opencv_storage>
+<mtx type_id="opencv-matrix">
+  <rows>3</rows>
+  <cols>3</cols>
+  <dt>d</dt>
+  <data>
+    6.5857691026299938e+02 0. 6.6208139432245582e+02 0.
+    6.5616025148029678e+02 4.5095983964344617e+02 0. 0. 1.</data></mtx>
+<dist type_id="opencv-matrix">
+  <rows>1</rows>
+  <cols>5</cols>
+  <dt>d</dt>
+  <data>
+    -2.0480305270748633e-02 8.7692626857330310e-03
+    8.4425560177879364e-03 3.9536417864991704e-03 1.8802997431810757e-03</data></dist>
+<frame_height>1080</frame_height>
+<board_width>11</board_width>
+<board_height>8</board_height>
+<board_size>1.4999999999999999e-02</board_size>
+</opencv_storage>

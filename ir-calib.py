@@ -383,7 +383,6 @@ class StereoCalibration:
     def external_calibrate(self, folder_name):
         # Calibration between multiple d435 sensors
         # From first left IR sensor to second left IR sensor
-
         # Load previously saved data
         for i in self.selected_devices:
             filename = 'config/cam_calib_'+str(i)+'0.xml'
@@ -410,7 +409,7 @@ class StereoCalibration:
             self.depth_intrin = []
             self.color_intrin = []
 
-            for i in self.selected_devices:
+            for i in self.selected_devices: # to calibrate btw d435 cameras
                 pipe = self.pipeline[i]
                 frame = pipe.wait_for_frames()
                 gray_img_ = np.asanyarray(frame[0].get_data()) # frame[0] : left ir camera
@@ -424,7 +423,7 @@ class StereoCalibration:
                     gray_img[i, :, :] = gray_img_
                     #gray_img = np.concatenate((gray_img, np.expand_dims(gray_img_, axis=0)), axis=0)
 
-            if found_board:
+            if found_board:# When both ir cameras detect the chessboard
 
                 for i in self.selected_devices:
                     dir_name = folder_name + "/cam_" + str(i)
@@ -437,7 +436,7 @@ class StereoCalibration:
                     cv2.imwrite(dir_name + '/img' + f'{n_img:02}.png', gray_img[i])
                     cv2.putText(gray_img[i], 'cam'+str(i), (960, 90), cv2.FONT_HERSHEY_SIMPLEX, 3, (255, 0, 0), 2, cv2.LINE_AA)
                     total_gray_img = np.hstack((total_gray_img, gray_img[i]))
-                    self.imgpoints2[i, n_img] = self.corners2[i]
+                    self.imgpoints2[i, 0, n_img] = self.corners2[i]
 
                 self.objpoints.append(self.objp)
                 print(n_img + 1, '/', self.total_count)
@@ -457,9 +456,11 @@ class StereoCalibration:
 
         flags = cv2.CALIB_FIX_INTRINSIC
 
-        imgpoints_l = self.imgpoints2[self.selected_devices[0]]
-        imgpoints_r = self.imgpoints2[self.selected_devices[1]]
-        _, _, _, _, _, R, tvec, _, _ = cv2.stereoCalibrate(self.objpoints, imgpoints_l, imgpoints_r, self.mtx[self.selected_devices[0]], self.dist[self.selected_devices[0]], self.mtx[self.selected_devices[1]], self.dist[self.selected_devices[1]], (self.frame_width, self.frame_height), criteria=self.stereocalib_criteria, flags=flags)
+        # imgpoints2[num_of_camera, left_camera]
+        imgpoints_l = self.imgpoints2[self.selected_devices[0], 0] 
+        imgpoints_r = self.imgpoints2[self.selected_devices[1], 0]
+        # self.dist[self.selected_devices[1]*3] -> because there are three matrix. left, right, rgb.
+        _, _, _, _, _, R, tvec, _, _ = cv2.stereoCalibrate(self.objpoints, imgpoints_l, imgpoints_r, self.mtx[self.selected_devices[0]], self.dist[self.selected_devices[0]], self.mtx[self.selected_devices[1]*3], self.dist[self.selected_devices[1]*3], (self.depth_frame_width, self.depth_frame_height), criteria=self.stereocalib_criteria, flags=flags)
 
         # R, tvec: Transformation from Cam 2 to Cam 1
         tvec = -R.T.dot(tvec)

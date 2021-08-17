@@ -103,7 +103,9 @@ def callback_cam(pc2_msg):
     T_rgb_to_ir_side[:3, :3] = np.reshape(rgb_to_ir_sidecam[:-3], (3, 3))
     T_rgb_to_ir_side[:3, 3] = rgb_to_ir_sidecam[-3:]
     
+    # without align_depth 
     #T_btw_cameras = T_ir_to_rgb_base.dot(T_btw_cameras_).dot(T_rgb_to_ir_side)
+    # with align_depth, ex) 'rs_rgbd.launch' -> default: align_depth:=true
     T_btw_cameras = T_btw_cameras_
 
     # Transform the point cloud data from cam 2 coordinate to cam 1 coordinate

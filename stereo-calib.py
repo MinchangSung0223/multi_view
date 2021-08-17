@@ -41,7 +41,7 @@ class StereoCalibration:
         self.board_size = board_size
         self.total_count = total_count
         self.selected_devices = selected_devices
-        self.wait_time = 1000
+        self.wait_time = 50
 
         #self.total_area = []
 
