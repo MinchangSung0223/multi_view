@@ -319,7 +319,6 @@ class StereoCalibration:
 
                     total_gray_img = np.hstack((total_gray_img, gray_img[i]))
                     self.imgpoints2[i, n_img] = self.corners2[i]
-                    pu.db
 
                 self.objpoints.append(self.objp)
                 print(n_img + 1, '/', self.total_count)
@@ -764,7 +763,6 @@ class StereoCalibration:
                 T_cam2marker, ret = a.detect(color_img, args.aruco)
                 if ret:
                     print(T_cam2marker)
-                    pu.db
                     s = cv2.FileStorage('config/cam2mobile.xml', cv2.FileStorage_WRITE)
                     s.write('R', T_cam2marker[:3, :3])
                     s.write('tvec', T_cam2marker[:3, 3])

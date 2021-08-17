@@ -29,6 +29,7 @@ def setArgs():
     parser.add_argument('-r', '--refine', action='store_true')
     parser.add_argument('-e', '--estimate', help='Input the calibration filename. Estimate the pose of chessboard')
     parser.add_argument('-i', '--internal', action='store_true')
+    parser.add_argument('-ex', '--external', action='store_true')
 
     args = parser.parse_args()
     return args
@@ -41,7 +42,7 @@ class StereoCalibration:
         self.board_size = board_size
         self.total_count = total_count
         self.selected_devices = selected_devices
-        self.wait_time = 500
+        self.wait_time = 50
 
         if frame_height == 480:
             self.frame_width = 640
@@ -120,7 +121,7 @@ class StereoCalibration:
             self.total_pipe = len(self.pipeline)
 
             # for stereo-calibrate
-            self.n_ir = 2
+            self.n_ir = 2 # Constant
             self.imgpoints2 = np.zeros((self.total_pipe, self.n_ir, self.total_count, self.board_height * self.board_width, 1, 2), dtype=np.float32)
         else:
             print('No Intel Device connected...', len(ctx.devices))
@@ -136,7 +137,8 @@ class StereoCalibration:
                 for j, frame in enumerate(frames):
                     ftype = frame.profile.stream_type()
                     if ftype == rs.stream.infrared:
-                        ir_image[j-1, :] = np.asanyarray(frame.get_data())
+                        #ir_image[j-1, :] = np.asanyarray(frame.get_data())
+                        ir_image[j, :] = np.asanyarray(frame.get_data())
                     else:
                         rgb_image = np.asanyarray(frame.get_data())
                 
@@ -182,7 +184,9 @@ class StereoCalibration:
                     gray_img = np.asanyarray(frame[j].get_data())
                     if j == 2:
                         gray_img = cv2.cvtColor(gray_img, cv2.COLOR_BGR2GRAY)
+                    st_time = time.time()
                     found_board, corners = cv2.findChessboardCorners(gray_img, (self.board_width, self.board_height), None)
+                    #print('time: ', time.time() - st_time)
 
                     if found_board: 
                         corners2 = cv2.cornerSubPix(gray_img, corners, (11, 11), (-1, -1), self.criteria)
@@ -301,8 +305,8 @@ class StereoCalibration:
                 if not s.isOpened():
                     print('Failed to open,', filename)
                     exit(1)
-                self.mtx[i+j] = s.getNode('mtx').mat()
-                self.dist[i+j] = s.getNode('dist').mat()
+                self.mtx[3*i+j] = s.getNode('mtx').mat()
+                self.dist[3*i+j] = s.getNode('dist').mat()
 
         for idx_pipe in self.selected_devices:
             print('---------------')
@@ -382,14 +386,14 @@ class StereoCalibration:
 
         # Load previously saved data
         for i in self.selected_devices:
-            filename = 'config/cam_calib_0'+str(i)+'.xml'
+            filename = 'config/cam_calib_'+str(i)+'0.xml'
             s = cv2.FileStorage()
             s.open(filename, cv2.FileStorage_READ)
             if not s.isOpened():
                 print('Failed to open,', filename)
                 exit(1)
-            self.mtx[i] = s.getNode('mtx').mat()
-            self.dist[i] = s.getNode('dist').mat()
+            self.mtx[3*i] = s.getNode('mtx').mat()
+            self.dist[3*i] = s.getNode('dist').mat()
 
         print('Initializing..')
         for i in range(3):
@@ -398,28 +402,18 @@ class StereoCalibration:
         print('---------------')
         n_img = 0
 
-
-#
-#                    frame = pipe.wait_for_frames()
-#                    gray_img = np.asanyarray(frame[j].get_data())
-#                    found_board, corners = cv2.findChessboardCorners(gray_img, (self.board_width, self.board_height), None)
-#
-
-
-
         while n_img < self.total_count:
 
-            gray_img = np.zeros((self.total_pipe, self.frame_height, self.frame_width), dtype=np.uint8)
-            total_gray_img = np.zeros((self.frame_height, 1), dtype=np.uint8)
+            gray_img = np.zeros((self.total_pipe, self.depth_frame_height, self.depth_frame_width), dtype=np.uint8)
+            total_gray_img = np.zeros((self.depth_frame_height, 1), dtype=np.uint8)
             found_board = True
             self.depth_intrin = []
             self.color_intrin = []
 
             for i in self.selected_devices:
-
-
+                pipe = self.pipeline[i]
                 frame = pipe.wait_for_frames()
-                gray_img = np.asanyarray(frame[j].get_data())
+                gray_img_ = np.asanyarray(frame[0].get_data()) # frame[0] : left ir camera
                 found_board_, corners = cv2.findChessboardCorners(gray_img_, (self.board_width, self.board_height), None)
                 found_board = found_board * found_board_ # When every camera detects the chessboard, found_board will be True
 
@@ -442,38 +436,6 @@ class StereoCalibration:
 
                     cv2.imwrite(dir_name + '/img' + f'{n_img:02}.png', gray_img[i])
                     cv2.putText(gray_img[i], 'cam'+str(i), (960, 90), cv2.FONT_HERSHEY_SIMPLEX, 3, (255, 0, 0), 2, cv2.LINE_AA)
-
-#                    left_top_u = int(self.corners2[i][0][0][0])
-#                    left_top_v = int(self.corners2[i][0][0][1])
-#                    right_top_u = int(self.corners2[i][self.board_width-1][0][0])
-#                    right_top_v = int(self.corners2[i][self.board_width-1][0][1])
-#                    
-#                    left_bottom_u = int(self.corners2[i][self.board_width*(self.board_height-1)][0][0])
-#                    left_bottom_v = int(self.corners2[i][self.board_width*(self.board_height-1)][0][1])
-#                    right_bottom_u = int(self.corners2[i][self.board_height*self.board_width-1][0][0])
-#                    right_bottom_v = int(self.corners2[i][self.board_height*self.board_width-1][0][1])
-#
-#                    cv2.circle(gray_img[i], (left_top_u, left_top_v), 2, (0,0,255), 18)
-#                    cv2.circle(gray_img[i], (right_top_u, right_top_v), 2, (255,0,0), 18)
-#                    cv2.circle(gray_img[i], (left_bottom_u, left_bottom_v), 2, (255,0,0), 18)
-#                    cv2.circle(gray_img[i], (right_bottom_u, right_bottom_v), 2, (255,0,0), 18)
-#
-##                    depth_value = self.depth_frm.get_distance(left_top_u, left_top_v)
-##                    depth_point1 = rs.rs2_deproject_pixel_to_point(self.color_intrin[i], [left_top_u, left_top_v], depth_value)
-##                    depth_point2 = rs.rs2_deproject_pixel_to_point(self.depth_intrin[i], [left_top_u, left_top_v], depth_value)
-##                    print('Cam ', i)
-##                    print('get_distance : ', depth_value)
-##                    print('deproject(color intrin) :', depth_point1)
-##                    print('deproject(depth intrin) :', depth_point2)
-##                    print('color intrinsic', self.color_intrin)
-##                    print('depth intrinsic', self.depth_intrin)
-##                    print('-------------------------')
-#
-#                    self.fiducial_pts[i, 0] = np.array(rs.rs2_deproject_pixel_to_point(self.depth_intrin[i], [left_top_u, left_top_v], self.depth_frm.get_distance(left_top_u, left_top_v)))
-#                    self.fiducial_pts[i, 1] = np.array(rs.rs2_deproject_pixel_to_point(self.depth_intrin[i], [right_top_u, right_top_v], self.depth_frm.get_distance(right_top_u, right_top_v)))
-#                    self.fiducial_pts[i, 2] = np.array(rs.rs2_deproject_pixel_to_point(self.depth_intrin[i], [left_bottom_u, left_bottom_v], self.depth_frm.get_distance(left_bottom_u, left_bottom_v)))
-#                    self.fiducial_pts[i, 3] = np.array(rs.rs2_deproject_pixel_to_point(self.depth_intrin[i], [right_bottom_u, right_bottom_v], self.depth_frm.get_distance(right_bottom_u, right_bottom_v)))
-
                     total_gray_img = np.hstack((total_gray_img, gray_img[i]))
                     self.imgpoints2[i, n_img] = self.corners2[i]
 
@@ -492,21 +454,8 @@ class StereoCalibration:
                     sys.exit(0)
 
         cv2.destroyAllWindows()
-#        for i in self.selected_devices:
-#            self.pipeline[i].stop()
 
         flags = cv2.CALIB_FIX_INTRINSIC
-        # flags |= cv2.CALIB_FIX_PRINCIPAL_POINT
-        # flags |= cv2.CALIB_USE_INTRINSIC_GUESS
-        # flags |= cv2.CALIB_FIX_FOCAL_LENGTH
-        # flags |= cv2.CALIB_FIX_ASPECT_RATIO
-        # flags |= cv2.CALIB_ZERO_TANGENT_DIST
-        # flags |= cv2.CALIB_RATIONAL_MODEL
-        # flags |= cv2.CALIB_SAME_FOCAL_LENGTH
-
-        # cam_combi = list(combinations(range(self.total_pipe), 2))
-        # for c in cam_combi:
-        # ret, M1, d1, M2, d2, R, tvec, E, F = cv2.stereoCalibrate(self.objpoints, self.imgpoints[c[0]], self.imgpoints[c[1]], self.mtx[c[0]], self.dist[c[0]], self.mtx[c[1]], self.dist[c[1]], (self.frame_width, self.frame_height), criteria=self.stereocalib_criteria, flags=flags)
 
         imgpoints_l = self.imgpoints2[self.selected_devices[0]]
         imgpoints_r = self.imgpoints2[self.selected_devices[1]]
@@ -523,11 +472,6 @@ class StereoCalibration:
         print('Rotation matrix', rotation_matrix)
         print('Euler angle(Rx, Ry, Rz) [deg]', eulerAngle * 180 / math.pi)
 
-        # Save camera parameters
-        # s = cv2.FileStorage('config/trans'+str(c[0])+str(c[1])+'.xml', cv2.FileStorage_WRITE)     # If you want to save the file at once(using combination) ex) n=3 -> 01, 12, 02
-
-
-# TODO: need to this code!! uncomment! 
         s = cv2.FileStorage('config/trans'+str(self.selected_devices[0])+str(self.selected_devices[1])+'.xml', cv2.FileStorage_WRITE)
         s.write('R', rotation_matrix)
         s.write('tvec', tvec)
@@ -567,7 +511,8 @@ if __name__ == '__main__':
         s.calibrate()
     elif args.internal:
         s.internal_calibrate('images')
-
+    elif args.external:
+        s.external_calibrate('images')
     elif args.stereo:
         R, t = s.stereo_calibrate('images')
     elif args.estimate:

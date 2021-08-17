@@ -35,20 +35,20 @@
         <value>-0.0221273</value>
     </param>
     <param name = "RotationLeftRight">
-      <value>9.9999955016597808e-01</value>
-      <value>-2.8766905507889576e-04</value>
-      <value>-9.0383314626351675e-04 </value>
-      <value>2.9173868026287011e-04</value>
-      <value>9.9998980660010672e-01 </value>
-      <value>4.5057279571223338e-03 </value>
-      <value>9.0252777462694817e-04</value>
-      <value>-4.5059896133818750e-03 </value>
-      <value>9.9998944069486062e-01</value>
+        <value>0.99999</value>
+        <value>-0.000839014</value>
+        <value>-0.00442902</value>
+        <value>0.000839765</value>
+        <value>1</value>
+        <value>0.000167593</value>
+        <value>0.00442888</value>
+        <value>-0.00017131</value>
+        <value>0.99999</value>
     </param>
     <param name = "TranslationLeftRight">
-      <value>-5.0258191631428174e+01</value>
-      <value>6.3400923833161198e-01</value>
-      <value>-5.1753816318980050</value>
+        <value>-49.8096</value>
+        <value>0.0798574</value>
+        <value>0.0696873</value>
     </param>
     <param name = "HasRGB">
         <value>1</value>
