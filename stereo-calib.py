@@ -41,8 +41,7 @@ class StereoCalibration:
         self.board_size = board_size
         self.total_count = total_count
         self.selected_devices = selected_devices
-        self.wait_time = 50
-
+        self.wait_time = 500
         #self.total_area = []
 
         if frame_height == 480:
@@ -75,9 +74,7 @@ class StereoCalibration:
         self.objp[:, :2] = np.mgrid[0:board_width, 0:board_height].T.reshape(-1, 2) * board_size
         self.objpoints = []     # 3d point in real world space
         self.imgpoints = []     # 2d points in image plane.
-
         self.save_cnt = 0
-
 
 #        ctx = rs.context()
 #        list = ctx.query_devices()
@@ -89,9 +86,6 @@ class StereoCalibration:
 #        devices = ctx.query_devices()
 #        for dev in devices:
 #                dev.hardware_reset()
-
-
-
 
         ctx = rs.context()
         self.pipeline = []
@@ -178,14 +172,16 @@ class StereoCalibration:
                 color_frm = frame.get_color_frame()
                 color_img = np.asanyarray(color_frm.get_data())
                 gray_img = cv2.cvtColor(color_img, cv2.COLOR_BGR2GRAY)
-
                 found_board, corners = cv2.findChessboardCorners(gray_img, (self.board_width, self.board_height), None)
-
                 if found_board: 
                     corners2 = cv2.cornerSubPix(gray_img, corners, (11, 11), (-1, -1), self.criteria)
                     cv2.drawChessboardCorners(gray_img, (self.board_width, self.board_height), corners2, found_board)
+
                     self.imgpoints.append(corners2)
-                    self.objpoints.append(self.objp)
+
+                    if idx_pipe == 0:
+                        self.objpoints.append(self.objp)
+
                     gray_img = cv2.resize(gray_img, (640, 480))
                     print(n_img + 1, '/', self.total_count)
                     n_img += 1
@@ -208,6 +204,8 @@ class StereoCalibration:
                 mean_error += error
             print("Reprojection error: {}".format(mean_error / len(self.objpoints)))
 
+            self.imgpoints = []     # 2d points in image plane.
+
             # Save camera parameters
             s = cv2.FileStorage('config/cam_calib_'+str(idx_pipe)+'.xml', cv2.FileStorage_WRITE)
             s.write('mtx', mtx)
@@ -216,8 +214,6 @@ class StereoCalibration:
         pipe.stop()
 
     def stereo_calibrate(self, folder_name):
-
-
         if len(self.pipeline) < 2:
             print('Need to more cameras...(if you want to stereo-calibrate)')
             sys.exit()
@@ -685,13 +681,8 @@ class StereoCalibration:
         t = centroid_b - np.dot(rot, centroid_a)
         return rot, t
 
-
     def fit_plane(self, pts):
         print('set')
-
-
-
-
 
 
     def crossProduct(self, a, b):
@@ -770,7 +761,6 @@ class StereoCalibration:
                 else:
                     print('exit!')
                     exit()
-
 
 
 if __name__ == '__main__':

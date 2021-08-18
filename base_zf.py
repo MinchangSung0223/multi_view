@@ -17,7 +17,8 @@ if __name__ == '__main__':
         base_cam = sys.argv[1]
         print('Start!')
         rospy.init_node(base_cam, disable_signals=True)
-        rospy.Subscriber('/' + base_cam + '/depth/color/points', pc2.PointCloud2, callback)
+        rospy.Subscriber('/' + base_cam + '/depth/color/points', pc2.PointCloud2, callback) # _color_optical_frame (reference, header)
+        # rospy.Subscriber('/' + base_cam + '/depth/image_rect_raw/data', pc2.PointCloud2, callback) # depth_optical_frame
         pub = rospy.Publisher('/' + base_cam + '_zf', pc2.PointCloud2, queue_size=10)
         rospy.spin()
     else:

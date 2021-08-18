@@ -219,7 +219,6 @@ class StereoCalibration:
                     mean_error += error
                 print("Reprojection error: {}".format(mean_error / len(self.objpoints)))
 
-                #self.imgpoints.clear()
                 self.imgpoints = []     # 2d points in image plane.
 
                 # Save camera parameters

@@ -89,7 +89,46 @@ class PointSetRegistration:
         #target_temp.paint_uniform_color([0, 0.651, 0.929])
         target_temp.transform(T)
         o3d.visualization.draw_geometries([source_temp, target_temp])
+        return source_temp, target_temp
 
+    def fit_plane(self, src_pcd, tg_pcd):
+        source_temp = src_pcd
+        target_temp = tg_pcd
+        #source_temp = copy.deepcopy(self.source)
+        #target_temp = copy.deepcopy(self.target)
+
+        src_plane_model, src_inliers = source_temp.segment_plane(distance_threshold=0.001, ransac_n=3, num_iterations=1000)
+        [src_a, src_b, src_c, src_d] = src_plane_model
+        print(f"Source Plane equation: {src_a:.2f}x + {src_b:.2f}y + {src_c:.2f}z + {src_d:.2f} = 0")
+
+        src_inlier_cloud = source_temp.select_by_index(src_inliers)
+        src_inlier_cloud.paint_uniform_color([1.0, 0, 0])
+
+        tg_plane_model, tg_inliers = target_temp.segment_plane(distance_threshold=0.001, ransac_n=3, num_iterations=1000)
+        [tg_a, tg_b, tg_c, tg_d] = tg_plane_model
+        print(f"Target Plane equation: {tg_a:.2f}x + {tg_b:.2f}y + {tg_c:.2f}z + {tg_d:.2f} = 0")
+
+        tg_inlier_cloud = target_temp.select_by_index(tg_inliers)
+        tg_inlier_cloud.paint_uniform_color([0, 1.0, 0])
+
+        #outlier_cloud = self.source.select_by_index(inliers, invert=True)
+        #o3d.visualization.draw_geometries([inlier_cloud, outlier_cloud])
+        o3d.visualization.draw_geometries([src_inlier_cloud, tg_inlier_cloud])
+
+        src_n = np.array([src_a, src_b, src_c])
+        tg_n = np.array([tg_a, tg_b, tg_c])
+        dot_res = src_n.dot(tg_n)
+        crs_res = np.cross(src_n, tg_n)
+        #norm_vec = np.linalg.norm(src_n) * np.linalg.norm(tg_c)
+        ang_btw_planes = np.arccos(dot_res)
+        print('Angle between two planes[deg]: ', np.rad2deg(ang_btw_planes))
+        print('Rotation vector between two planes: ', crs_res)
+
+        T_two_planes = np.eye(4)
+        cv2.Rodrigues(crs_res, T_two_planes[:3, :3])
+        print('Rotate to parallel two planes')
+        src_inlier_cloud.transform(T_two_planes)
+        o3d.visualization.draw_geometries([src_inlier_cloud, tg_inlier_cloud])
 
 if __name__ == '__main__':
     args = setArgs()
@@ -99,6 +138,8 @@ if __name__ == '__main__':
     pc = PointSetRegistration()
     pc.prepare_dataset(args.ply_file, voxel_size)
 
+    #pc.fit_plane()
+
     filename = 'config/trans01.xml'
     s = cv2.FileStorage()
     s.open(filename, cv2.FileStorage_READ)
@@ -107,8 +148,8 @@ if __name__ == '__main__':
     T_btw_cameras[:3, 3] = s.getNode('tvec').mat().reshape((3))
     print(filename)
     print(T_btw_cameras)
-    pc.transform_points(T_btw_cameras)
-
+    src_1, tg_1 = pc.transform_points(T_btw_cameras)
+    pc.fit_plane(src_1, tg_1)
 
     filename = 'config/new_trans01.xml'
     s = cv2.FileStorage()
@@ -118,8 +159,8 @@ if __name__ == '__main__':
     T_btw_cameras_[:3, 3] = s.getNode('tvec').mat().reshape((3))
     print(filename)
     print(T_btw_cameras_)
-    pc.transform_points(T_btw_cameras_)
-
+    src_2, tg_2 = pc.transform_points(T_btw_cameras_)
+    pc.fit_plane(src_2, tg_2)
 
     print('between two matrix')
     print(T_btw_cameras.dot(np.linalg.inv(T_btw_cameras_)))

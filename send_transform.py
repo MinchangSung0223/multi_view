@@ -165,6 +165,7 @@ if __name__ == '__main__':
         f.close()
 
     rospy.init_node('transform_' + filename[-5] + '_cam_to_base_cam', disable_signals=True)
-    rospy.Subscriber('/'+side_cam+'/depth/color/points', pc2.PointCloud2, callback_cam)
+    rospy.Subscriber('/'+side_cam+'/depth/color/points', pc2.PointCloud2, callback_cam) # 
+    # rospy.Subscriber('/'+side_cam+'/depth/image_rect_raw', pc2.PointCloud2, callback_cam)
     pub = rospy.Publisher('/transformed_' + filename[-5], pc2.PointCloud2, queue_size=10)
     rospy.spin()
