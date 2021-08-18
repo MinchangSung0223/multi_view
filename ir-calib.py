@@ -42,7 +42,7 @@ class StereoCalibration:
         self.board_size = board_size
         self.total_count = total_count
         self.selected_devices = selected_devices
-        self.wait_time = 50
+        self.wait_time = 500
 
         if frame_height == 480:
             self.frame_width = 640
@@ -189,10 +189,11 @@ class StereoCalibration:
                     #print('time: ', time.time() - st_time)
 
                     if found_board: 
+                        if j == 0 and idx_pipe == 0: # TODO: if the first camera is not 0, idx_pipe should be changed.
+                            self.objpoints.append(self.objp)
                         corners2 = cv2.cornerSubPix(gray_img, corners, (11, 11), (-1, -1), self.criteria)
                         cv2.drawChessboardCorners(gray_img, (self.board_width, self.board_height), corners2, found_board)
                         self.imgpoints.append(corners2)
-                        self.objpoints.append(self.objp)
                         gray_img = cv2.resize(gray_img, (self.re_frame_width, self.re_frame_height))
                         print(n_img + 1, '/', self.total_count)
                         n_img += 1
@@ -207,6 +208,8 @@ class StereoCalibration:
                 if j == 2:
                     ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(self.objpoints, self.imgpoints, (self.frame_width, self.frame_height), None, None)
                 else:
+                    #print(j, 'th camera(0: left, 1: right, 2: rgb)')
+                    #print('corner', self.imgpoints)
                     ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(self.objpoints, self.imgpoints, (self.depth_frame_width, self.depth_frame_height), None, None)
                 # Re-projection error
                 mean_error = 0
@@ -215,6 +218,9 @@ class StereoCalibration:
                     error = cv2.norm(self.imgpoints[i], imgpoints2, cv2.NORM_L2) / len(imgpoints2)
                     mean_error += error
                 print("Reprojection error: {}".format(mean_error / len(self.objpoints)))
+
+                #self.imgpoints.clear()
+                self.imgpoints = []     # 2d points in image plane.
 
                 # Save camera parameters
                 s = cv2.FileStorage('config/cam_calib_'+str(idx_pipe)+str(j)+'.xml', cv2.FileStorage_WRITE)
