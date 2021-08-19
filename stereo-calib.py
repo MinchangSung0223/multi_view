@@ -468,7 +468,6 @@ class StereoCalibration:
 
                 self.depth_frm = aligned_frames.get_depth_frame()
 
-
                 #self.depth_frm = dec_filter.process(self.depth_frm)
                 # dec_filter : change the frame size
                 # self.depth_frm = spat_filter.process(self.depth_frm)
@@ -545,6 +544,17 @@ class StereoCalibration:
                     f.write('end_header\n')
                     for pt in zip(roi_pts):
                         f.write(str(pt[0][0])+' '+str(pt[0][1])+' '+str(pt[0][2])+' '+str(pt[0][3])+' '+str(pt[0][4])+' '+str(pt[0][5])+'\n')
+
+                with open('cloud'+str(i)+'corners.ply','w') as f:
+                    f.write('ply\n')
+                    f.write('format ascii 1.0\n')
+                    f.write('element vertex 4\n')
+                    f.write('property float32 x\n')
+                    f.write('property float32 y\n')
+                    f.write('property float32 z\n')
+                    f.write('end_header\n')
+                    for pt in zip(self.fiducial_pts[i]):
+                        f.write(str(pt[0][0])+' '+str(pt[0][1])+' '+str(pt[0][2])+'\n')
 
             total_gray_img = cv2.resize(total_gray_img, (self.re_frame_width * len(self.selected_devices), self.re_frame_height))
             cv2.imshow('stereo-calibrate', total_gray_img)

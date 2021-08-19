@@ -99,14 +99,14 @@ class PointSetRegistration:
 
         src_plane_model, src_inliers = source_temp.segment_plane(distance_threshold=0.001, ransac_n=3, num_iterations=1000)
         [src_a, src_b, src_c, src_d] = src_plane_model
-        print(f"Source Plane equation: {src_a:.2f}x + {src_b:.2f}y + {src_c:.2f}z + {src_d:.2f} = 0")
+        print(f"1. Source Plane equation: {src_a:.2f}x + {src_b:.2f}y + {src_c:.2f}z + {src_d:.2f} = 0")
 
         src_inlier_cloud = source_temp.select_by_index(src_inliers)
         src_inlier_cloud.paint_uniform_color([1.0, 0, 0])
 
         tg_plane_model, tg_inliers = target_temp.segment_plane(distance_threshold=0.001, ransac_n=3, num_iterations=1000)
         [tg_a, tg_b, tg_c, tg_d] = tg_plane_model
-        print(f"Target Plane equation: {tg_a:.2f}x + {tg_b:.2f}y + {tg_c:.2f}z + {tg_d:.2f} = 0")
+        print(f"2. Target Plane equation: {tg_a:.2f}x + {tg_b:.2f}y + {tg_c:.2f}z + {tg_d:.2f} = 0")
 
         tg_inlier_cloud = target_temp.select_by_index(tg_inliers)
         tg_inlier_cloud.paint_uniform_color([0, 1.0, 0])
@@ -127,8 +127,24 @@ class PointSetRegistration:
         T_two_planes = np.eye(4)
         cv2.Rodrigues(crs_res, T_two_planes[:3, :3])
         print('Rotate to parallel two planes')
+        print('Rotation matrix:', T_two_planes[:3, :3])
         src_inlier_cloud.transform(T_two_planes)
         o3d.visualization.draw_geometries([src_inlier_cloud, tg_inlier_cloud])
+
+        transformed_src_plane_model, transformed_src_inliers = src_inlier_cloud.segment_plane(distance_threshold=0.001, ransac_n=3, num_iterations=1000)
+        [t_src_a, t_src_b, t_src_c, t_src_d] = transformed_src_plane_model
+        print(f"3. Source(Transformed) Plane equation: {t_src_a:.2f}x + {t_src_b:.2f}y + {t_src_c:.2f}z + {t_src_d:.2f} = 0")
+
+        dist_btw_two_planes = abs(t_src_d - tg_d) / np.sqrt(np.power(tg_a, 2) + np.power(tg_b, 2) + np.power(tg_c, 2))
+        print('Distance between two planes: ', dist_btw_two_planes)
+
+        T_two_planes_trans = np.eye(4)
+        T_two_planes_trans[:3, 3] = np.array([t_src_a, t_src_b, t_src_c]) * - dist_btw_two_planes
+        src_inlier_cloud.transform(T_two_planes_trans)
+        print('Translate to align two planes.')
+        o3d.visualization.draw_geometries([src_inlier_cloud, tg_inlier_cloud])
+
+
 
 if __name__ == '__main__':
     args = setArgs()
@@ -138,18 +154,16 @@ if __name__ == '__main__':
     pc = PointSetRegistration()
     pc.prepare_dataset(args.ply_file, voxel_size)
 
-    #pc.fit_plane()
-
-    filename = 'config/trans01.xml'
-    s = cv2.FileStorage()
-    s.open(filename, cv2.FileStorage_READ)
-    T_btw_cameras = np.eye(4)
-    T_btw_cameras[:3, :3] = s.getNode('R').mat()
-    T_btw_cameras[:3, 3] = s.getNode('tvec').mat().reshape((3))
-    print(filename)
-    print(T_btw_cameras)
-    src_1, tg_1 = pc.transform_points(T_btw_cameras)
-    pc.fit_plane(src_1, tg_1)
+#    filename = 'config/trans01.xml'
+#    s = cv2.FileStorage()
+#    s.open(filename, cv2.FileStorage_READ)
+#    T_btw_cameras = np.eye(4)
+#    T_btw_cameras[:3, :3] = s.getNode('R').mat()
+#    T_btw_cameras[:3, 3] = s.getNode('tvec').mat().reshape((3))
+#    print(filename)
+#    print(T_btw_cameras)
+#    src_1, tg_1 = pc.transform_points(T_btw_cameras)
+#    pc.fit_plane(src_1, tg_1)
 
     filename = 'config/new_trans01.xml'
     s = cv2.FileStorage()
@@ -162,8 +176,8 @@ if __name__ == '__main__':
     src_2, tg_2 = pc.transform_points(T_btw_cameras_)
     pc.fit_plane(src_2, tg_2)
 
-    print('between two matrix')
-    print(T_btw_cameras.dot(np.linalg.inv(T_btw_cameras_)))
+    #print('between two matrix')
+    #print(T_btw_cameras.dot(np.linalg.inv(T_btw_cameras_)))
 
 
 
