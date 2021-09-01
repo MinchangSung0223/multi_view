@@ -41,7 +41,7 @@ class StereoCalibration:
         self.board_size = board_size
         self.total_count = total_count
         self.selected_devices = selected_devices
-        self.wait_time = 500
+        self.wait_time = 1000
         #self.total_area = []
 
         if frame_height == 480:
@@ -127,6 +127,7 @@ class StereoCalibration:
 
             self.total_pipe = len(self.pipeline)
             self.fiducial_pts = np.zeros((self.total_pipe, 4, 3)) # (num of camera, num of points, position)
+            self.all_fiducial_pts = np.zeros((self.total_pipe, len(self.objp), 3)) # (num of camera, num of points, position)
             # for stereo-calibrate
             self.imgpoints2 = np.zeros((self.total_pipe, self.total_count, self.board_height * self.board_width, 1, 2), dtype=np.float32)
         else:
@@ -486,6 +487,8 @@ class StereoCalibration:
                 self.color_img = np.asanyarray(self.color_frm.get_data())
                 colorful = self.color_img.reshape(-1, 3)    # to extract color of the roi
                 # ---- #
+                for idx, fidu in enumerate(self.corners2[i]):
+                    self.all_fiducial_pts[i, idx] = np.array(rs.rs2_deproject_pixel_to_point(self.depth_intrin[i], fidu[0].tolist(), self.depth_frm.get_distance(fidu[0][0], fidu[0][1])))
 
                 cv2.putText(gray_img[i], 'cam'+str(i), (960, 90), cv2.FONT_HERSHEY_SIMPLEX, 3, (255, 0, 0), 2, cv2.LINE_AA)
                 left_top_u = int(self.corners2[i][0][0][0])
@@ -545,7 +548,7 @@ class StereoCalibration:
                     for pt in zip(roi_pts):
                         f.write(str(pt[0][0])+' '+str(pt[0][1])+' '+str(pt[0][2])+' '+str(pt[0][3])+' '+str(pt[0][4])+' '+str(pt[0][5])+'\n')
 
-                with open('cloud'+str(i)+'corners.ply','w') as f:
+                with open('cloud'+str(i)+'_corners.ply','w') as f:
                     f.write('ply\n')
                     f.write('format ascii 1.0\n')
                     f.write('element vertex 4\n')
@@ -556,9 +559,23 @@ class StereoCalibration:
                     for pt in zip(self.fiducial_pts[i]):
                         f.write(str(pt[0][0])+' '+str(pt[0][1])+' '+str(pt[0][2])+'\n')
 
+                with open('cloud'+str(i)+'_fiducial.ply','w') as f:
+                    f.write('ply\n')
+                    f.write('format ascii 1.0\n')
+                    f.write('element vertex ' + str(len(self.objp)) + '\n')
+                    f.write('property float32 x\n')
+                    f.write('property float32 y\n')
+                    f.write('property float32 z\n')
+                    f.write('end_header\n')
+                    for pt in zip(self.all_fiducial_pts[i]):
+                        f.write(str(pt[0][0])+' '+str(pt[0][1])+' '+str(pt[0][2])+'\n')
+                
+                self.all_fiducial_pts = np.zeros((self.total_pipe, len(self.objp), 3)) # (num of camera, num of points, position)
+
             total_gray_img = cv2.resize(total_gray_img, (self.re_frame_width * len(self.selected_devices), self.re_frame_height))
             cv2.imshow('stereo-calibrate', total_gray_img)
             key = cv2.waitKey(self.wait_time)
+            #key = cv2.waitKey(0)
 
             if key == 27:
                 cv2.destroyAllWindows()

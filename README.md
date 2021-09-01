@@ -157,3 +157,4 @@
 	3. High accuracy
 	4. If it was connected more than three cameras without [-d] option, it will only calibrated between first and second camera, not third. 
 
+# multi_view

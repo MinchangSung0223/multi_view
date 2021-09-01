@@ -6,6 +6,10 @@ import copy
 import pudb
 import cv2
 import argparse
+import time
+import scipy.optimize
+from pytransform3d.rotations import *
+
 
 def setArgs():
     parser = argparse.ArgumentParser()
@@ -113,7 +117,10 @@ class PointSetRegistration:
 
         #outlier_cloud = self.source.select_by_index(inliers, invert=True)
         #o3d.visualization.draw_geometries([inlier_cloud, outlier_cloud])
-        o3d.visualization.draw_geometries([src_inlier_cloud, tg_inlier_cloud])
+
+
+
+        #o3d.visualization.draw_geometries([src_inlier_cloud, tg_inlier_cloud])
 
         src_n = np.array([src_a, src_b, src_c])
         tg_n = np.array([tg_a, tg_b, tg_c])
@@ -129,21 +136,56 @@ class PointSetRegistration:
         print('Rotate to parallel two planes')
         print('Rotation matrix:', T_two_planes[:3, :3])
         src_inlier_cloud.transform(T_two_planes)
-        o3d.visualization.draw_geometries([src_inlier_cloud, tg_inlier_cloud])
+        source_temp.transform(T_two_planes)
 
-        transformed_src_plane_model, transformed_src_inliers = src_inlier_cloud.segment_plane(distance_threshold=0.001, ransac_n=3, num_iterations=1000)
-        [t_src_a, t_src_b, t_src_c, t_src_d] = transformed_src_plane_model
-        print(f"3. Source(Transformed) Plane equation: {t_src_a:.2f}x + {t_src_b:.2f}y + {t_src_c:.2f}z + {t_src_d:.2f} = 0")
 
-        dist_btw_two_planes = abs(t_src_d - tg_d) / np.sqrt(np.power(tg_a, 2) + np.power(tg_b, 2) + np.power(tg_c, 2))
-        print('Distance between two planes: ', dist_btw_two_planes)
+        #o3d.visualization.draw_geometries([src_inlier_cloud, tg_inlier_cloud])
 
-        T_two_planes_trans = np.eye(4)
-        T_two_planes_trans[:3, 3] = np.array([t_src_a, t_src_b, t_src_c]) * - dist_btw_two_planes
-        src_inlier_cloud.transform(T_two_planes_trans)
-        print('Translate to align two planes.')
-        o3d.visualization.draw_geometries([src_inlier_cloud, tg_inlier_cloud])
 
+        # o3d.visualization.draw_geometries([source_temp, target_temp])
+
+#        transformed_src_plane_model, transformed_src_inliers = src_inlier_cloud.segment_plane(distance_threshold=0.001, ransac_n=3, num_iterations=1000)
+#        [t_src_a, t_src_b, t_src_c, t_src_d] = transformed_src_plane_model
+#        print(f"3. Source(Transformed) Plane equation: {t_src_a:.2f}x + {t_src_b:.2f}y + {t_src_c:.2f}z + {t_src_d:.2f} = 0")
+#
+#        dist_btw_two_planes = abs(t_src_d - tg_d) / np.sqrt(np.power(tg_a, 2) + np.power(tg_b, 2) + np.power(tg_c, 2))
+#        print('Distance between two planes: ', dist_btw_two_planes)
+#
+#        T_two_planes_trans = np.eye(4)
+#        T_two_planes_trans[:3, 3] = np.array([t_src_a, t_src_b, t_src_c]) * - dist_btw_two_planes
+#        src_inlier_cloud.transform(T_two_planes_trans)
+#        print('Translate to align two planes.')
+#        o3d.visualization.draw_geometries([src_inlier_cloud, tg_inlier_cloud])
+
+
+#        print('Principal Component Analysis(src)')
+#        src_mean, src_cov = o3d.geometry.PointCloud.compute_mean_and_covariance(src_inlier_cloud)
+#        src_pca = np.linalg.eig(src_cov)
+#        src_evalue = src_pca[0]
+#        src_evector = src_pca[1].T
+#        src_points = [ src_mean, src_mean + src_evector[0], src_mean + src_evector[1], src_mean + src_evector[2], ]
+#        src_lines = [ [0, 1], [0, 2], [0, 3], ]
+#        line_set = o3d.geometry.LineSet( points=o3d.utility.Vector3dVector(src_points), lines=o3d.utility.Vector2iVector(src_lines),)
+#        o3d.visualization.draw_geometries([line_set, src_inlier_cloud])
+
+#        num_ply_file = ['cloud0_corners.ply', 'cloud1_corners.ply']
+#        ply = []
+#        for i in num_ply_file:
+#            ply.append(o3d.io.read_point_cloud(i))
+#            
+#        ply[1].transform(T_btw_cameras_)
+#        src_corners = np.asarray(ply[0].points)
+#        tg_corners = np.asarray(ply[1].points)
+#        src_center = np.mean(src_corners, axis=0)
+#        tg_center = np.mean(tg_corners, axis=0)
+#        tvec_btw_centers = - tg_center + src_center
+#        T_two_planes_trans = np.eye(4)
+#        T_two_planes_trans[:3, 3] = tvec_btw_centers
+#        src_inlier_cloud.transform(T_two_planes_trans)
+#        source_temp.transform(T_two_planes_trans)
+#        print('Translate to align two planes.')
+#        #o3d.visualization.draw_geometries([src_inlier_cloud, tg_inlier_cloud])
+#        o3d.visualization.draw_geometries([source_temp, target_temp])
 
 
 if __name__ == '__main__':
@@ -154,16 +196,16 @@ if __name__ == '__main__':
     pc = PointSetRegistration()
     pc.prepare_dataset(args.ply_file, voxel_size)
 
-#    filename = 'config/trans01.xml'
-#    s = cv2.FileStorage()
-#    s.open(filename, cv2.FileStorage_READ)
-#    T_btw_cameras = np.eye(4)
-#    T_btw_cameras[:3, :3] = s.getNode('R').mat()
-#    T_btw_cameras[:3, 3] = s.getNode('tvec').mat().reshape((3))
-#    print(filename)
-#    print(T_btw_cameras)
-#    src_1, tg_1 = pc.transform_points(T_btw_cameras)
-#    pc.fit_plane(src_1, tg_1)
+    filename = 'config/trans01.xml'
+    s = cv2.FileStorage()
+    s.open(filename, cv2.FileStorage_READ)
+    T_btw_cameras = np.eye(4)
+    T_btw_cameras[:3, :3] = s.getNode('R').mat()
+    T_btw_cameras[:3, 3] = s.getNode('tvec').mat().reshape((3))
+    print(filename)
+    print(T_btw_cameras)
+    src_1, tg_1 = pc.transform_points(T_btw_cameras)
+##    pc.fit_plane(src_1, tg_1)
 
     filename = 'config/new_trans01.xml'
     s = cv2.FileStorage()
@@ -176,143 +218,109 @@ if __name__ == '__main__':
     src_2, tg_2 = pc.transform_points(T_btw_cameras_)
     pc.fit_plane(src_2, tg_2)
 
-    #print('between two matrix')
-    #print(T_btw_cameras.dot(np.linalg.inv(T_btw_cameras_)))
+#    print('between two matrix')
+#    print(T_btw_cameras.dot(np.linalg.inv(T_btw_cameras_)))
 
+    num_ply_file = ['cloud0_fiducial.ply', 'cloud1_fiducial.ply']
+    ply = []
+    for i in num_ply_file:
+        ply.append(o3d.io.read_point_cloud(i))
+        
+    ply[0].paint_uniform_color([0, 1.0, 0])
+    ply[1].paint_uniform_color([1.0, 0, 0])
 
+    o3d.visualization.draw_geometries([ply[0], ply[1]])
+    ply[1].transform(T_btw_cameras)
+    o3d.visualization.draw_geometries([ply[0], ply[1]])
 
+    pts_ply_0 = np.array(ply[0].points)
+    pts_ply_1 = np.array(ply[1].points)
 
-#voxel_size = 0.005  # means 5mm for this dataset
-#source, target, source_down, target_down, source_fpfh, target_fpfh = prepare_dataset(voxel_size)
-#transform_points(T_btw_cameras)
+    #error = np.linalg.norm(pts_ply_0 - pts_ply_1)
+    #print(error)
+    err = np.linalg.norm(pts_ply_0 - pts_ply_1, axis=1)
+    print(np.mean(err))
+
+    X0 = np.eye(4)
+    tic = time.perf_counter()
+
+    def lossfn(x):
+        cost = []
+        X = np.eye(4)
+        R = matrix_from_quaternion(x[0:4])
+        tvec = x[4:7]
+        X[:3, :3] = R
+        X[:3, 3] = tvec
+        cost = []
+
+        #source_temp = copy.deepcopy(ply[0])
+        #target_temp = copy.deepcopy(ply[1])
+        source_temp = ply[0]
+        target_temp = ply[1]
+
+        src_plane_model, src_inliers = source_temp.segment_plane(distance_threshold=0.001, ransac_n=3, num_iterations=1000)
+        [src_a, src_b, src_c, src_d] = src_plane_model
+
+        tg_plane_model, tg_inliers = target_temp.segment_plane(distance_threshold=0.001, ransac_n=3, num_iterations=1000)
+        [tg_a, tg_b, tg_c, tg_d] = tg_plane_model
+
+        src_n = np.array([src_a, src_b, src_c])
+        tg_n = np.array([tg_a, tg_b, tg_c])
+        dot_res = src_n.dot(tg_n)
+        crs_res = np.cross(src_n, tg_n)
+        #norm_vec = np.linalg.norm(src_n) * np.linalg.norm(tg_c)
+        ang_btw_planes = np.arccos(dot_res)
+
+        for pt0, pt1 in zip(pts_ply_0, pts_ply_1):
+            dummy = np.ones(1)
+            pt1 = np.append(pt1, dummy, axis=0)
+            pt_1 = X.dot(pt1)
+            cost_ = np.linalg.norm(pt0 - pt_1[:3]) #+ 1000 * ang_btw_planes
+            cost.append(cost_)
+        return cost
+
+    Rx0 = X0[:3, :3]
+    tx0 = X0[:3, 3]
+    x0 = np.concatenate((quaternion_from_matrix(Rx0), tx0.reshape(3)), axis=0)
+    ''' lm method
+    - jac: only '2-point'
+    - ftol: Tolerance for termination by the change of the cost function. Default is 1e-8.
+      xtol: Tolerance for termination by the change of the independent variables. Default is 1e-8. 
+      gtol: Tolerance for termination by the norm of the gradient. Default is 1e-8. 
+    If None, the termination by this condition is disabled.
+    - loss: only 'linear' option, so 'f_scale' also cannot control.
+    - max_nfec
+    '''
+    cost_fn_tol = 0.00001
+    res = scipy.optimize.least_squares(fun=lossfn, x0=x0, method='lm', ftol=cost_fn_tol)
+    T = np.eye(4)
+    T[:3, :3] = matrix_from_quaternion(res.x[0:4])
+    T[:3, 3] = res.x[4:7]
+    print(T)
+    toc = time.perf_counter()
+    elapsed_time = toc - tic
+    print('Time(Tabb_zc1):', round(elapsed_time, 2))
+    ply[1].transform(T)
+    o3d.visualization.draw_geometries([ply[0], ply[1]])
+
+    pts_ply_0 = np.array(ply[0].points)
+    pts_ply_1 = np.array(ply[1].points)
+
+    err = np.linalg.norm(pts_ply_0 - pts_ply_1, axis=1)
+    print(np.mean(err))
+    #error = np.linalg.norm(pts_ply_0 - pts_ply_1)
+    #print(error)
+
+#    num_ply_file = ['cloud0_corners.ply', 'cloud1_corners.ply']
+#    ply = []
+#    for i in num_ply_file:
+#        ply.append(o3d.io.read_point_cloud(i))
+#        
+#    src_corners = np.asarray(ply[0].points)
+#    tg_corners = np.asarray(ply[1].points)
+#    src_center = np.mean(src_corners, axis=0)
+#    tg_center = np.mean(tg_corners, axis=0)
+#    tvec_btw_centers = tg_center - src_center
 #
-#
-#filename = 'config/new_trans01.xml'
-#s = cv2.FileStorage()
-#s.open(filename, cv2.FileStorage_READ)
-#T_btw_cameras = np.eye(4)
-#T_btw_cameras[:3, :3] = s.getNode('R').mat()
-#T_btw_cameras[:3, 3] = s.getNode('tvec').mat().reshape((3))
-#voxel_size = 0.005  # means 5mm for this dataset
-#source, target, source_down, target_down, source_fpfh, target_fpfh = prepare_dataset(voxel_size)
-#transform_points(T_btw_cameras)
-#
-#
-#
-#result_ransac = execute_global_registration(source_down, target_down,
-#                                            source_fpfh, target_fpfh,
-#                                            voxel_size)
-#print(result_ransac)
-#draw_registration_result(source_down, target_down, result_ransac.transformation)
-#
-#
-#pcd = source
-#plane_model, inliers = pcd.segment_plane(distance_threshold=0.01,
-#                                         ransac_n=3,
-#                                         num_iterations=1000)
-#[a, b, c, d] = plane_model
-#print(f"Plane equation: {a:.2f}x + {b:.2f}y + {c:.2f}z + {d:.2f} = 0")
-#
-#inlier_cloud = pcd.select_by_index(inliers)
-#inlier_cloud.paint_uniform_color([1.0, 0, 0])
-#outlier_cloud = pcd.select_by_index(inliers, invert=True)
-#o3d.visualization.draw_geometries([inlier_cloud, outlier_cloud])
-#
-#
-#pcd = target
-#plane_model, inliers = pcd.segment_plane(distance_threshold=0.01,
-#                                         ransac_n=3,
-#                                         num_iterations=1000)
-#[a, b, c, d] = plane_model
-#print(f"Plane equation: {a:.2f}x + {b:.2f}y + {c:.2f}z + {d:.2f} = 0")
-#
-#inlier_cloud = pcd.select_by_index(inliers)
-#inlier_cloud.paint_uniform_color([1.0, 0, 0])
-#outlier_cloud = pcd.select_by_index(inliers, invert=True)
-#o3d.visualization.draw_geometries([inlier_cloud, outlier_cloud])
-#
-#
-#
-#
-#
-#def draw_registration_result_original_color(source, target, transformation):
-#    source_temp = copy.deepcopy(source)
-#    source_temp.transform(transformation)
-#    o3d.visualization.draw_geometries([source_temp, target],
-#                                      zoom=0.5,
-#                                      front=[-0.2458, -0.8088, 0.5342],
-#                                      lookat=[1.7745, 2.2305, 0.9787],
-#                                      up=[0.3109, -0.5878, -0.7468])
-#
-#
-#
-## colored pointcloud registration
-## This is implementation of following paper
-## J. Park, Q.-Y. Zhou, V. Koltun,
-## Colored Point Cloud Registration Revisited, ICCV 2017
-##voxel_radius = [0.04, 0.02, 0.01]
-##max_iter = [50, 30, 14]
-##current_transformation = np.identity(4)
-##print("3. Colored point cloud registration")
-##for scale in range(3):
-##    iter = max_iter[scale]
-##    radius = voxel_radius[scale]
-##    print([iter, radius, scale])
-##
-##    print("3-1. Downsample with a voxel size %.2f" % radius)
-##    source_down = source.voxel_down_sample(radius)
-##    target_down = target.voxel_down_sample(radius)
-##    pu.db
-##
-##    print("3-2. Estimate normal.")
-##    source_down.estimate_normals(
-##        o3d.geometry.KDTreeSearchParamHybrid(radius=radius * 2, max_nn=30))
-##    target_down.estimate_normals(
-##        o3d.geometry.KDTreeSearchParamHybrid(radius=radius * 2, max_nn=30))
-##
-##    print("3-3. Applying colored point cloud registration")
-##    result_icp = o3d.pipelines.registration.registration_colored_icp(
-##        source_down, target_down, radius, current_transformation,
-##        o3d.pipelines.registration.TransformationEstimationForColoredICP(),
-##        o3d.pipelines.registration.ICPConvergenceCriteria(relative_fitness=1e-6,
-##                                                          relative_rmse=1e-6,
-##                                                          max_iteration=iter))
-##    current_transformation = result_icp.transformation
-##    print(result_icp)
-##draw_registration_result_original_color(source, target,
-##                                        result_icp.transformation)
-#
-#
-##
-##print("Apply point-to-point ICP")
-##reg_p2p = o3d.pipelines.registration.registration_icp(
-##    source, target, threshold, trans_init,
-##    o3d.pipelines.registration.TransformationEstimationPointToPoint())
-##print(reg_p2p)
-##print("Transformation is:")
-##print(reg_p2p.transformation)
-##draw_registration_result(source, target, reg_p2p.transformation)
-##
-##reg_p2p = o3d.pipelines.registration.registration_icp(
-##    source, target, threshold, trans_init,
-##    o3d.pipelines.registration.TransformationEstimationPointToPoint(),
-##    o3d.pipelines.registration.ICPConvergenceCriteria(max_iteration=2000))
-##print(reg_p2p)
-##print("Transformation is:")
-##print(reg_p2p.transformation)
-##draw_registration_result(source, target, reg_p2p.transformation)
-##
-##
-##
-##
-##print("Apply point-to-plane ICP")
-##reg_p2l = o3d.pipelines.registration.registration_icp(
-##    source, target, threshold, trans_init,
-##    o3d.pipelines.registration.TransformationEstimationPointToPlane())
-##print(reg_p2l)
-##print("Transformation is:")
-##print(reg_p2l.transformation)
-##draw_registration_result(source, target, reg_p2l.transformation)
-##
-##
-##
+#    T_two_planes_trans = np.eye(4)
+#    T_two_planes_trans[:3, 3] = tvec_btw_centers
